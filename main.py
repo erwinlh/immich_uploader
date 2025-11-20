@@ -89,12 +89,23 @@ def check_endpoints():
         print(f"\n{Fore.RED}❌ Error: Configuración incompleta en .env{Style.RESET_ALL}")
         return
 
-    # Lista de endpoints para probar
+    # Lista de endpoints para probar (varias versiones de la API)
     endpoints_to_test = [
-        ("/api/server-info/ping", "GET", "Ping del servidor"),
-        ("/api/server-info/version", "GET", "Versión del servidor"),
-        ("/api/server-info", "GET", "Información del servidor"),
-        ("/api/assets", "GET", "Endpoint de assets (requiere auth)"),
+        # Endpoints de información del servidor (varias variantes)
+        ("/api/server-info/ping", "GET", "Ping del servidor (API v1)"),
+        ("/api/server-info/version", "GET", "Versión del servidor (API v1)"),
+        ("/api/server-info", "GET", "Información del servidor (API v1)"),
+        ("/server-info/ping", "GET", "Ping del servidor (sin /api)"),
+        ("/api/server/ping", "GET", "Ping del servidor (API alternativa)"),
+
+        # Endpoints de assets (varias variantes)
+        ("/api/assets", "GET", "Endpoint de assets (API v1)"),
+        ("/api/asset", "GET", "Endpoint de asset (singular)"),
+        ("/api/asset/upload", "GET", "Endpoint de upload (legacy)"),
+
+        # Otros endpoints útiles
+        ("/api/auth/validateToken", "POST", "Validar token de API"),
+        ("/api/user/me", "GET", "Información del usuario actual"),
     ]
 
     print(f"\n🔌 Probando endpoints...\n")
@@ -112,6 +123,9 @@ def check_endpoints():
         try:
             if method == "GET":
                 response = session.get(url, timeout=5)
+            elif method == "POST":
+                # POST con body vacío o mínimo
+                response = session.post(url, json={}, timeout=5)
             else:
                 response = session.request(method, url, timeout=5)
 
