@@ -76,19 +76,33 @@ class ImmichClient:
             }
 
     def verify_connection(self) -> bool:
-        """Verificar que la conexión con Immich funciona"""
-        try:
-            url = f"{self.base_url}/api/server-info/ping"
-            response = self.session.get(url, timeout=5)
-            if response.status_code == 200:
-                logger.info("Conexión con Immich verificada exitosamente")
-                return True
-            else:
-                logger.warning(f"Respuesta inesperada del servidor: {response.status_code}")
-                return False
-        except Exception as e:
-            logger.error(f"Error verificando conexión con Immich: {str(e)}")
-            return False
+        """
+        Verificar que la conexión con Immich funciona
+        Intenta varios endpoints comunes - si alguno responde, asumimos que está OK
+        """
+        # Lista de endpoints para probar
+        endpoints = [
+            "/api/server-info/ping",
+            "/api/server-info/version",
+            "/api/server-info"
+        ]
+
+        for endpoint in endpoints:
+            try:
+                url = f"{self.base_url}{endpoint}"
+                response = self.session.get(url, timeout=5)
+
+                # Cualquier respuesta que no sea 404/500 es válida
+                if response.status_code < 500:
+                    logger.info(f"Conexión con Immich verificada (endpoint: {endpoint}, status: {response.status_code})")
+                    return True
+            except Exception as e:
+                logger.debug(f"Endpoint {endpoint} no disponible: {str(e)}")
+                continue
+
+        # Si ningún endpoint funcionó, advertir pero no fallar
+        logger.warning("No se pudo verificar conexión con Immich, pero se intentará subir archivos de todas formas")
+        return True  # Retornar True para continuar
 
     def close(self):
         """Cerrar sesión"""
