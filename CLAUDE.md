@@ -62,12 +62,21 @@ CREATE TABLE IF NOT EXISTS media_files (
 
 ## Architecture
 
-### Script Organization
+### Module Organization (REFACTORED - v2.0)
 
-- **main.py**: Interactive CLI menu coordinator with ASCII logo display and status summaries
-- **scan_files.py**: File discovery, SHA-256 hashing, EXIF metadata extraction, and database population
-- **upload_files.py**: Processes pending files from database and uploads to Immich API
-- **sync_upload.py**: Combined workflow that scans and uploads in a single pass (recommended for continuous processing)
+**Core Modules:**
+- **config.py**: Centralized configuration from environment variables
+- **logger.py**: Structured logging to file and console
+- **db_manager.py**: Database manager with persistent connection and auto-reconnect
+- **immich_client.py**: Immich API client with session management
+- **utils.py**: Shared utilities (hashing, metadata extraction, formatting)
+- **progress.py**: Progress tracking with ETA, speed metrics, and colored output
+
+**Scripts:**
+- **main.py**: Interactive CLI menu coordinator
+- **scan_files.py**: File discovery and database population (uses new modules)
+- **upload_files.py**: Upload pending files (uses new modules)
+- **sync_upload.py**: Combined scan+upload workflow (recommended)
 
 ### Data Flow
 
@@ -110,38 +119,62 @@ The `media_files` table uses:
   - 409: Conflict/duplicate
   - Other: Error (logged to api_response)
 
-### Error Handling
+### Error Handling (v2.0 IMPROVED)
 
-- **Consecutive error tracking**: Both scan and upload phases stop after 5 consecutive errors to prevent infinite loops on systemic issues (e.g., database connection loss, API unavailability)
-- **File-level errors**: Hash calculation failures, missing files, and upload errors are logged individually without stopping the process
-- **Resumability**: Upload state persists in database, allowing interruption and continuation
+- **Signal handling**: Graceful SIGINT (Ctrl+C) handling - cleans up DB/API connections before exit
+- **Persistent connections**: Database connection with auto-reconnect via ping mechanism
+- **Consecutive error tracking**: Configurable via MAX_CONSECUTIVE_ERRORS env var (default: 5)
+- **File-level errors**: Logged to file (logs/immich_uploader.log) with full stack traces
+- **Resumability**: State persists in database - can interrupt and resume at any time
+- **Connection verification**: Immich connection tested before upload batch starts
 
-### Progress Reporting
+### Progress Reporting (v2.0 ENHANCED)
 
-Uses colorama for terminal output:
-- Green (✅): Successful uploads
-- Yellow (⚠): Duplicates or skipped files
-- Red (❌): Errors
-- Real-time display of current file, upload speed (MB/s), and metadata (camera, lens, exposure settings)
+New ProgressTracker class provides:
+- **Real-time progress**: [current/total] (X%) with ETA calculation
+- **Color-coded status**: Green (✅ success), Yellow (⚠ duplicate/skipped), Red (❌ error), Cyan (⏳ processing)
+- **Speed metrics**: MB/s for uploads, files/s for scanning
+- **Detailed summary**: Total processed, successful, duplicates, errors, skipped, time, throughput
+- **Metadata display**: Camera, lens, dimensions, EXIF settings shown inline during upload
 
 ## Configuration
 
-All configuration is in `.env`:
+All configuration is in `.env` (loaded via config.py):
+
+**Required:**
 - `IMMICH_URL`: Immich server base URL
 - `IMMICH_API_KEY`: API authentication key
 - `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_PORT`: MySQL connection
 - `SOURCE_DIR`: Root directory to scan
-- `IMAGE_EXTENSIONS`, `VIDEO_EXTENSIONS`: Comma-separated file types to process
 
-Note: `.env` contains sensitive credentials and should never be committed (hardcoded path in main.py:14 for ASCII logo should be made relative if distributing).
+**Optional (with defaults):**
+- `IMAGE_EXTENSIONS`: Comma-separated (default: jpg,jpeg,png,webp,tiff,tif,bmp,heic,heif)
+- `VIDEO_EXTENSIONS`: Comma-separated (default: mp4,mov,avi,mkv,wmv,flv,webm,m4v)
+- `MAX_CONSECUTIVE_ERRORS`: Stop after N errors (default: 5)
+- `UPLOAD_DELAY`: Seconds between uploads (default: 0.1)
+- `HASH_CHUNK_SIZE`: Bytes for hashing (default: 4096)
+- `LOG_LEVEL`: DEBUG/INFO/WARNING/ERROR (default: INFO)
+- `LOG_FILE`: Log file path (default: logs/immich_uploader.log)
+
+Note: `.env` is in .gitignore to protect credentials.
 
 ## Dependencies
 
-Core libraries:
-- **PyMySQL**: MySQL database driver
-- **requests**: HTTP client for Immich API
-- **exifread**: EXIF metadata extraction
-- **Pillow (PIL)**: Image dimensions and additional metadata
-- **tqdm**: Progress bars (legacy, currently using custom progress display)
+Core libraries (requirements.txt):
+- **PyMySQL**: MySQL database driver with connection pooling
+- **requests**: HTTP client for Immich API (uses Session for connection reuse)
+- **ExifRead**: EXIF metadata extraction from images
+- **Pillow (PIL)**: Image dimensions and format detection
 - **colorama**: Cross-platform colored terminal output
 - **python-dotenv**: Environment variable management
+
+## Key Improvements in v2.0
+
+1. **Modular architecture**: Separated concerns into config, db, api, utils, logging, progress modules
+2. **Persistent connections**: Database auto-reconnects, HTTP session reuse
+3. **Signal handling**: Graceful Ctrl+C with cleanup
+4. **Structured logging**: All operations logged to file with timestamps and levels
+5. **Better progress reporting**: ETA, speed metrics, color-coded status, detailed summaries
+6. **Configuration centralized**: All settings in config.py loaded from .env
+7. **Type safety**: Better function signatures and return types
+8. **Error resilience**: Connection verification, auto-reconnect, configurable error thresholds
