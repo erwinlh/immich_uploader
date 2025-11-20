@@ -71,10 +71,11 @@ def sync_and_upload():
     print(f"📁 Escaneando directorio: {SOURCE_DIR}")
     logger.info(f"Directorio de origen: {SOURCE_DIR}")
 
-    # Obtener lista de archivos
+    # Obtener lista de archivos con fecha de modificación (en un solo paso)
     files_to_process = []
     print("🔍 Buscando archivos multimedia...")
 
+    file_count = 0
     for root, dirs, files in os.walk(SOURCE_DIR):
         if interrupted:
             break
@@ -83,7 +84,19 @@ def sync_and_upload():
             file_type = get_file_type(filepath)
 
             if file_type:
-                files_to_process.append(filepath)
+                try:
+                    # Obtener mtime una sola vez mientras recorremos
+                    mtime = os.path.getmtime(filepath)
+                    files_to_process.append((filepath, mtime))
+                    file_count += 1
+                    # Mostrar progreso cada 1000 archivos
+                    if file_count % 1000 == 0:
+                        print(f"\r   Encontrados: {file_count} archivos...", end='', flush=True)
+                except OSError:
+                    # Si no podemos leer el archivo, lo saltamos
+                    continue
+
+    print(f"\r   Encontrados: {file_count} archivos... ¡Listo!")
 
     if interrupted:
         print("\n⚠️  Escaneo cancelado por el usuario")
@@ -91,8 +104,12 @@ def sync_and_upload():
         immich.close()
         return
 
-    # Ordenar por fecha de modificación
-    files_to_process.sort(key=lambda x: os.path.getmtime(x))
+    # Ordenar por fecha de modificación (ya tenemos los mtimes, no necesitamos leerlos de nuevo)
+    print("📋 Ordenando archivos por fecha...")
+    files_to_process.sort(key=lambda x: x[1])
+
+    # Extraer solo los paths (ya están ordenados)
+    files_to_process = [fp for fp, _ in files_to_process]
 
     total_files = len(files_to_process)
     print(f"✅ Se encontraron {total_files} archivos multimedia para procesar\n")
