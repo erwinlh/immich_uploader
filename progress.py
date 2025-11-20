@@ -70,13 +70,23 @@ class ProgressTracker:
             status_msg = f"{Fore.YELLOW}⏭ Saltado{Style.RESET_ALL}"
 
         # Imprimir progreso
-        print(f"\r{' ' * 120}", end='', flush=True)  # Limpiar línea
-        print(
-            f"\r[{self.current_index}/{self.total_files}] ({progress_pct:.1f}%) "
-            f"ETA: {eta_str} - {status_msg} - {filename[:50]}{speed_str}",
-            end='',
-            flush=True
-        )
+        # Si es saltado, imprimir en nueva línea para no saturar
+        if status == 'skipped':
+            # Solo mostrar cada 10 archivos saltados
+            if self.skipped % 10 == 1:
+                print(
+                    f"\r[{self.current_index}/{self.total_files}] ({progress_pct:.1f}%) "
+                    f"ETA: {eta_str} - {status_msg} - {filename[:50]}"
+                )
+        else:
+            # Para otros estados, mostrar en la misma línea
+            print(f"\r{' ' * 120}", end='', flush=True)  # Limpiar línea
+            print(
+                f"\r[{self.current_index}/{self.total_files}] ({progress_pct:.1f}%) "
+                f"ETA: {eta_str} - {status_msg} - {filename[:50]}{speed_str}",
+                end='',
+                flush=True
+            )
 
     def increment_counter(self, counter_name: str):
         """Incrementar un contador específico"""
