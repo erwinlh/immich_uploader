@@ -26,7 +26,7 @@ def signal_handler(sig, frame):
     logger.info("Proceso interrumpido por el usuario")
 
 
-def scan_and_populate_db():
+def scan_and_populate_db(folder_filter=None):
     """Escanear directorios y poblar la base de datos"""
     global interrupted
 
@@ -46,15 +46,22 @@ def scan_and_populate_db():
         logger.error(f"Fallo al conectar a la base de datos: {str(e)}")
         return
 
-    print(f"📁 Escaneando directorio: {SOURCE_DIR}")
-    logger.info(f"Directorio de origen: {SOURCE_DIR}")
+    # Determinar directorio a escanear
+    if folder_filter:
+        scan_dir = os.path.join(SOURCE_DIR, folder_filter)
+        print(f"📁 Escaneando directorio: {scan_dir}")
+        logger.info(f"Directorio filtrado: {scan_dir}")
+    else:
+        scan_dir = SOURCE_DIR
+        print(f"📁 Escaneando directorio: {SOURCE_DIR}")
+        logger.info(f"Directorio de origen: {SOURCE_DIR}")
 
     # Obtener lista de archivos con fecha de modificación (en un solo paso)
     files_to_process = []
     print("🔍 Buscando archivos multimedia...")
 
     file_count = 0
-    for root, dirs, files in os.walk(SOURCE_DIR):
+    for root, dirs, files in os.walk(scan_dir):
         if interrupted:
             break
         for file in files:

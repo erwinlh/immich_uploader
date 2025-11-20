@@ -17,7 +17,7 @@ from sync_upload import sync_and_upload
 THREADS = 1
 
 
-def show_menu():
+def show_menu(folder_filter=None):
     """Mostrar menú de opciones"""
     # Leer y mostrar el logo ASCII
     try:
@@ -30,6 +30,8 @@ def show_menu():
 
     print("\n=== Gestor de Subida a Immich ===")
     print(f"⚙️  Hilos configurados: {THREADS}")
+    if folder_filter:
+        print(f"📁 Carpeta filtrada: {folder_filter}")
     print("1. Escanear directorios y poblar base de datos")
     print("2. Subir archivos pendientes a Immich")
     print("3. Mostrar resumen de estado")
@@ -206,9 +208,12 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 Ejemplos:
-  python main.py              # Usar 1 hilo (default)
-  python main.py --threads=5  # Usar 5 hilos
-  python main.py -t 10        # Usar 10 hilos
+  python main.py                    # Todo con 1 hilo
+  python main.py --threads=5        # Todo con 5 hilos
+  python main.py -t 10              # Todo con 10 hilos
+  python main.py -f 2019            # Solo carpeta 2019
+  python main.py -t 5 -f 2019       # Carpeta 2019 con 5 hilos
+  python main.py -f "2019/2019-04"  # Subcarpeta específica
         '''
     )
     parser.add_argument(
@@ -218,9 +223,17 @@ Ejemplos:
         metavar='N',
         help='Número de hilos para subidas paralelas (default: 1)'
     )
+    parser.add_argument(
+        '-f', '--folder',
+        type=str,
+        default=None,
+        metavar='PATH',
+        help='Carpeta específica a procesar (relativa a SOURCE_DIR, ej: "2019" o "2019/2019-04-06")'
+    )
 
     args = parser.parse_args()
     THREADS = args.threads
+    folder_filter = args.folder
 
     # Validar número de hilos
     if THREADS < 1:
@@ -232,17 +245,31 @@ Ejemplos:
         if response.lower() != 's':
             sys.exit(0)
 
-    logger.info(f"Aplicación iniciada con {THREADS} hilo(s)")
-    print("🚀 Gestor de Subida a Immich\n")
+    # Validar carpeta si se especificó
+    if folder_filter:
+        from config import SOURCE_DIR
+        import os
+        full_path = os.path.join(SOURCE_DIR, folder_filter)
+        if not os.path.exists(full_path):
+            print(f"❌ Error: La carpeta '{folder_filter}' no existe en {SOURCE_DIR}")
+            sys.exit(1)
+        if not os.path.isdir(full_path):
+            print(f"❌ Error: '{folder_filter}' no es una carpeta")
+            sys.exit(1)
+        logger.info(f"Aplicación iniciada con {THREADS} hilo(s) - Carpeta: {folder_filter}")
+        print(f"🚀 Gestor de Subida a Immich - Carpeta: {folder_filter}\n")
+    else:
+        logger.info(f"Aplicación iniciada con {THREADS} hilo(s)")
+        print("🚀 Gestor de Subida a Immich\n")
 
     while True:
         try:
-            choice = show_menu()
+            choice = show_menu(folder_filter)
 
             if choice == '1':
-                logger.info("Usuario seleccionó: Escanear directorios")
+                logger.info(f"Usuario seleccionó: Escanear directorios - Carpeta: {folder_filter or 'todas'}")
                 print("\n📁 Escaneando directorios y poblando base de datos...")
-                scan_and_populate_db()
+                scan_and_populate_db(folder_filter=folder_filter)
                 input("\n✅ Presione Enter para continuar...")
 
             elif choice == '2':
@@ -257,9 +284,9 @@ Ejemplos:
                 input("✅ Presione Enter para continuar...")
 
             elif choice == '4':
-                logger.info(f"Usuario seleccionó: Modo combinado ({THREADS} hilos)")
+                logger.info(f"Usuario seleccionó: Modo combinado ({THREADS} hilos) - Carpeta: {folder_filter or 'todas'}")
                 print(f"\n🔄 Escaneando y subiendo en un solo proceso con {THREADS} hilo(s)...")
-                sync_and_upload(threads=THREADS)
+                sync_and_upload(threads=THREADS, folder_filter=folder_filter)
                 input("\n✅ Presione Enter para continuar...")
 
             elif choice == '5':

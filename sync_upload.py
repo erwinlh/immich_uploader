@@ -33,7 +33,7 @@ def signal_handler(sig, frame):
     logger.info("Proceso interrumpido por el usuario")
 
 
-def sync_and_upload(threads=1):
+def sync_and_upload(threads=1, folder_filter=None):
     """Escanear directorios y subir archivos en un solo proceso"""
     global interrupted
 
@@ -70,15 +70,22 @@ def sync_and_upload(threads=1):
 
     print("✅ Conexión con Immich verificada\n")
 
-    print(f"📁 Escaneando directorio: {SOURCE_DIR}")
-    logger.info(f"Directorio de origen: {SOURCE_DIR}")
+    # Determinar directorio a escanear
+    if folder_filter:
+        scan_dir = os.path.join(SOURCE_DIR, folder_filter)
+        print(f"📁 Escaneando directorio: {scan_dir}")
+        logger.info(f"Directorio filtrado: {scan_dir}")
+    else:
+        scan_dir = SOURCE_DIR
+        print(f"📁 Escaneando directorio: {SOURCE_DIR}")
+        logger.info(f"Directorio de origen: {SOURCE_DIR}")
 
     # Obtener lista de archivos con fecha de modificación (en un solo paso)
     files_to_process = []
     print("🔍 Buscando archivos multimedia...")
 
     file_count = 0
-    for root, dirs, files in os.walk(SOURCE_DIR):
+    for root, dirs, files in os.walk(scan_dir):
         if interrupted:
             break
         for file in files:
