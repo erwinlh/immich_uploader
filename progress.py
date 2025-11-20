@@ -76,10 +76,12 @@ class ProgressTracker:
         # Imprimir progreso
         # Si es saltado, imprimir en nueva línea para no saturar
         if status == 'skipped':
+            # Limpiar línea de "Procesando" primero
+            print(f"\r{' ' * 150}", end='', flush=True)
             # Solo mostrar cada 10 archivos saltados
             if self.skipped % 10 == 1:
                 print(
-                    f"[{timestamp}] [{self.current_index}/{self.total_files}] ({progress_pct:.1f}%) "
+                    f"\r[{timestamp}] [{self.current_index}/{self.total_files}] ({progress_pct:.1f}%) "
                     f"ETA: {eta_str} - {status_msg} - {filename[:50]}"
                 )
         else:
