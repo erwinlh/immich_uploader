@@ -102,10 +102,15 @@ def check_endpoints():
         ("/api/assets", "GET", "Endpoint de assets (API v1)"),
         ("/api/asset", "GET", "Endpoint de asset (singular)"),
         ("/api/asset/upload", "GET", "Endpoint de upload (legacy)"),
+        ("/asset/upload", "GET", "Endpoint de upload (sin /api)"),
+        ("/api/upload", "GET", "Endpoint de upload (directo)"),
 
         # Otros endpoints útiles
         ("/api/auth/validateToken", "POST", "Validar token de API"),
         ("/api/user/me", "GET", "Información del usuario actual"),
+        ("/api/users/me", "GET", "Información del usuario (plural)"),
+        ("/api/albums", "GET", "Listado de álbumes"),
+        ("/api/library", "GET", "Biblioteca de medios"),
     ]
 
     print(f"\n🔌 Probando endpoints...\n")
