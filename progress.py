@@ -4,6 +4,7 @@ Sistema de reporte de progreso mejorado
 """
 import time
 from typing import Optional
+from datetime import datetime
 from colorama import Fore, Style
 from utils import format_size, format_time
 
@@ -69,20 +70,23 @@ class ProgressTracker:
         elif status == 'skipped':
             status_msg = f"{Fore.YELLOW}⏭ Saltado{Style.RESET_ALL}"
 
+        # Timestamp actual
+        timestamp = datetime.now().strftime("%H:%M:%S")
+
         # Imprimir progreso
         # Si es saltado, imprimir en nueva línea para no saturar
         if status == 'skipped':
             # Solo mostrar cada 10 archivos saltados
             if self.skipped % 10 == 1:
                 print(
-                    f"\r[{self.current_index}/{self.total_files}] ({progress_pct:.1f}%) "
+                    f"[{timestamp}] [{self.current_index}/{self.total_files}] ({progress_pct:.1f}%) "
                     f"ETA: {eta_str} - {status_msg} - {filename[:50]}"
                 )
         else:
             # Para otros estados, mostrar en la misma línea
-            print(f"\r{' ' * 120}", end='', flush=True)  # Limpiar línea
+            print(f"\r{' ' * 150}", end='', flush=True)  # Limpiar línea (más largo para timestamp)
             print(
-                f"\r[{self.current_index}/{self.total_files}] ({progress_pct:.1f}%) "
+                f"\r[{timestamp}] [{self.current_index}/{self.total_files}] ({progress_pct:.1f}%) "
                 f"ETA: {eta_str} - {status_msg} - {filename[:50]}{speed_str}",
                 end='',
                 flush=True
@@ -106,16 +110,22 @@ class ProgressTracker:
         total_time = time.time() - self.start_time
         avg_speed = self.processed / total_time if total_time > 0 else 0
 
-        print("\n\n" + "=" * 60)
+        end_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        start_timestamp = datetime.fromtimestamp(self.start_time).strftime("%Y-%m-%d %H:%M:%S")
+
+        print("\n\n" + "=" * 70)
         print(f"{Fore.CYAN}RESUMEN DEL PROCESO{Style.RESET_ALL}")
-        print("=" * 60)
+        print("=" * 70)
+        print(f"Inicio:                   {start_timestamp}")
+        print(f"Fin:                      {end_timestamp}")
+        print(f"Duración:                 {format_time(total_time)}")
+        print("-" * 70)
         print(f"Archivos procesados:      {self.processed}")
         print(f"{Fore.GREEN}✅ Subidas exitosas:      {self.successful}{Style.RESET_ALL}")
         print(f"{Fore.YELLOW}⚠  Duplicados:             {self.duplicates}{Style.RESET_ALL}")
         print(f"⏭  Saltados (ya subidos):  {self.skipped}")
         print(f"{Fore.RED}❌ Errores:               {self.errors}{Style.RESET_ALL}")
-        print("-" * 60)
-        print(f"Tiempo total:             {format_time(total_time)}")
+        print("-" * 70)
         print(f"Velocidad promedio:       {avg_speed:.2f} archivos/s")
 
         if self.bytes_processed > 0:
@@ -123,4 +133,4 @@ class ProgressTracker:
             throughput = self.bytes_processed / total_time if total_time > 0 else 0
             print(f"Throughput promedio:      {format_size(throughput)}/s")
 
-        print("=" * 60 + "\n")
+        print("=" * 70 + "\n")
