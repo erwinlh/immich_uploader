@@ -1,0 +1,61 @@
+# Environment variables (contains sensitive data)
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.sql
+*.db
+*.sqlite
+
+# Media files (don't commit the actual photos/videos)
+*.jpg
+*.jpeg
+*.png
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webp
+*.tiff
+*.tif
+*.bmp
+*.heic
+*.heif
+*.wmv
+*.flv
+*.webm
+*.m4v
+
+# Backup directory
+backup/
+
+# Session files
+session-summary.md
+QWEN.md
