@@ -29,9 +29,7 @@ class ImmichClient:
         Subir un archivo a Immich
         Retorna diccionario con status_code, response_text, headers, error
         """
-        # Usar /asset/upload para versiones antiguas de Immich
-        # Las versiones nuevas usan /api/assets
-        url = f"{self.base_url}/asset/upload"
+        url = f"{self.base_url}/api/assets"
 
         try:
             stats = os.stat(filepath)

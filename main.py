@@ -5,12 +5,16 @@ VERSIÓN MEJORADA con logging y mejor arquitectura
 """
 import sys
 import os
+import argparse
 from config import LOGO_FILE
 from db_manager import DatabaseManager
 from logger import logger
 from scan_files import scan_and_populate_db
 from upload_files import upload_pending_files
 from sync_upload import sync_and_upload
+
+# Variable global para número de hilos
+THREADS = 1
 
 
 def show_menu():
@@ -25,6 +29,7 @@ def show_menu():
         logger.debug(f"No se pudo cargar el logo: {str(e)}")
 
     print("\n=== Gestor de Subida a Immich ===")
+    print(f"⚙️  Hilos configurados: {THREADS}")
     print("1. Escanear directorios y poblar base de datos")
     print("2. Subir archivos pendientes a Immich")
     print("3. Mostrar resumen de estado")
@@ -193,7 +198,41 @@ def check_endpoints():
 
 def main():
     """Función principal"""
-    logger.info("Aplicación iniciada")
+    global THREADS
+
+    # Parsear argumentos
+    parser = argparse.ArgumentParser(
+        description='Gestor de Subida a Immich',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''
+Ejemplos:
+  python main.py              # Usar 1 hilo (default)
+  python main.py --threads=5  # Usar 5 hilos
+  python main.py -t 10        # Usar 10 hilos
+        '''
+    )
+    parser.add_argument(
+        '-t', '--threads',
+        type=int,
+        default=1,
+        metavar='N',
+        help='Número de hilos para subidas paralelas (default: 1)'
+    )
+
+    args = parser.parse_args()
+    THREADS = args.threads
+
+    # Validar número de hilos
+    if THREADS < 1:
+        print("❌ Error: El número de hilos debe ser mayor o igual a 1")
+        sys.exit(1)
+    if THREADS > 20:
+        print("⚠️  Advertencia: Usar más de 20 hilos puede sobrecargar el servidor")
+        response = input("¿Continuar de todas formas? (s/n): ")
+        if response.lower() != 's':
+            sys.exit(0)
+
+    logger.info(f"Aplicación iniciada con {THREADS} hilo(s)")
     print("🚀 Gestor de Subida a Immich\n")
 
     while True:
@@ -207,9 +246,9 @@ def main():
                 input("\n✅ Presione Enter para continuar...")
 
             elif choice == '2':
-                logger.info("Usuario seleccionó: Subir archivos pendientes")
-                print("\n📤 Subiendo archivos pendientes a Immich...")
-                upload_pending_files()
+                logger.info(f"Usuario seleccionó: Subir archivos pendientes ({THREADS} hilos)")
+                print(f"\n📤 Subiendo archivos pendientes a Immich con {THREADS} hilo(s)...")
+                upload_pending_files(threads=THREADS)
                 input("\n✅ Presione Enter para continuar...")
 
             elif choice == '3':
@@ -218,9 +257,9 @@ def main():
                 input("✅ Presione Enter para continuar...")
 
             elif choice == '4':
-                logger.info("Usuario seleccionó: Modo combinado")
-                print("\n🔄 Escaneando y subiendo en un solo proceso...")
-                sync_and_upload()
+                logger.info(f"Usuario seleccionó: Modo combinado ({THREADS} hilos)")
+                print(f"\n🔄 Escaneando y subiendo en un solo proceso con {THREADS} hilo(s)...")
+                sync_and_upload(threads=THREADS)
                 input("\n✅ Presione Enter para continuar...")
 
             elif choice == '5':

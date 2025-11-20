@@ -33,9 +33,11 @@ def signal_handler(sig, frame):
     logger.info("Proceso interrumpido por el usuario")
 
 
-def sync_and_upload():
+def sync_and_upload(threads=1):
     """Escanear directorios y subir archivos en un solo proceso"""
     global interrupted
+
+    logger.info(f"Modo combinado con {threads} hilo(s) para subida")
 
     # Configurar manejador de señales
     signal.signal(signal.SIGINT, signal_handler)
