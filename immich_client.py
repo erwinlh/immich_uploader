@@ -29,7 +29,9 @@ class ImmichClient:
         Subir un archivo a Immich
         Retorna diccionario con status_code, response_text, headers, error
         """
-        url = f"{self.base_url}/api/assets"
+        # Usar /asset/upload para versiones antiguas de Immich
+        # Las versiones nuevas usan /api/assets
+        url = f"{self.base_url}/asset/upload"
 
         try:
             stats = os.stat(filepath)
@@ -80,11 +82,12 @@ class ImmichClient:
         Verificar que la conexión con Immich funciona
         Intenta varios endpoints comunes - si alguno responde, asumimos que está OK
         """
-        # Lista de endpoints para probar
+        # Lista de endpoints para probar (soporte para versiones antiguas y nuevas)
         endpoints = [
-            "/api/server-info/ping",
-            "/api/server-info/version",
-            "/api/server-info"
+            "/api/server/ping",         # Versiones antiguas
+            "/server-info/ping",        # Versiones antiguas (sin /api)
+            "/api/server-info/ping",    # Versiones nuevas
+            "/api/auth/validateToken",  # Validación de API key
         ]
 
         for endpoint in endpoints:
