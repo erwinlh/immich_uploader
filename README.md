@@ -1,30 +1,32 @@
-# Gestor de Subida a Immich
+# Gestor de Subida a Immich v2.0
 
 Este proyecto permite subir fotos y videos a Immich de forma organizada, manteniendo un registro de estado y permitiendo continuar desde donde se dejó.
 
-## Características
+**⚠️ IMPORTANTE:** Versión 2.0 completamente refactorizada con arquitectura modular, logging estructurado, y mejor manejo de errores. El código v1.0 está respaldado en `/backup/`.
 
+## Características v2.0
+
+### Nuevas Características
+- ✅ **Arquitectura modular**: Código organizado en módulos especializados (db_manager, immich_client, utils, progress, logger, config)
+- ✅ **Logging estructurado**: Todos los eventos se registran en `logs/immich_uploader.log` con timestamps
+- ✅ **Conexión DB persistente**: Una única conexión reutilizable con auto-reconexión
+- ✅ **Manejo de interrupciones**: Ctrl+C cierra conexiones limpiamente y muestra resumen parcial
+- ✅ **Menú de diagnóstico**: Opción 5 prueba múltiples endpoints para identificar versión de API de Immich
+- ✅ **Timestamps en progreso**: Cada línea muestra `[HH:MM:SS]` para seguimiento temporal
+- ✅ **Optimización de escaneo**: Pre-carga mtimes para ordenación rápida (de minutos a segundos)
+- ✅ **Progreso mejorado**: ETA, velocidad, porcentaje, colores, y resumen detallado
+
+### Características Heredadas
 - Escanea directorios recursivamente para encontrar fotos y videos
 - Calcula hash SHA-256 de cada archivo para detectar duplicados
-- Mantiene un registro en base de datos del estado de cada archivo
-- Permite subir archivos de forma continua, retomando desde donde se dejó
-- Registra respuestas de la API de Immich
-- Detecta archivos ya subidos (duplicados)
-- Muestra en tiempo real el archivo que se está procesando durante el escaneo
-- Muestra en tiempo real el archivo que se está subiendo durante la subida
-- Muestra estadísticas de velocidad durante ambos procesos
-- Muestra detalles de la respuesta de la API durante la subida
-- Muestra tiempos de procesamiento y velocidades de subida
-- Extrae y almacena metadatos de imágenes (EXIF, dimensiones, etc.)
-- Verifica que los metadatos se preservan durante la subida
+- Mantiene registro en MySQL del estado de cada archivo
+- Reanudable: retoma desde donde se dejó tras interrupciones
+- Extrae y almacena metadatos EXIF (cámara, lente, exposición, GPS, dimensiones)
+- Detecta automáticamente archivos ya subidos (duplicados)
 - Modo combinado: escanea y sube en un solo proceso (recomendado)
-- Verifica estado previo antes de intentar subir archivos ya procesados
-- Manejo inteligente de errores: detiene el proceso tras varios errores consecutivos
-- Utiliza el endpoint correcto de la API de Immich
-- Visualización con colores y emojis: verde para éxito (✅), naranja para duplicados (⚠), rojo para errores (❌)
-- Muestra información detallada de cámara, lente y configuración de disparo desde los metadatos EXIF
-- Procesa archivos ordenados por fecha de captura o modificación (de más nuevo a más antiguo)
-- Maneja adecuadamente archivos sin metadatos EXIF, mostrando "N/A" cuando no están disponibles
+- Manejo inteligente de errores: detiene tras N errores consecutivos (configurable)
+- Visualización con colores: ✅ éxito, ⚠️ duplicado/saltado, ❌ error
+- Compatible con versiones antiguas de Immich (usa `/asset/upload`)
 
 ## Requisitos
 
@@ -74,36 +76,55 @@ VIDEO_EXTENSIONS=mp4,mov,avi,mkv,wmv,flv,webm,m4v
 
 ## Uso
 
-### Método 1: Usar el menú interactivo
+### Menú Interactivo (Recomendado)
 
 ```bash
 source venv/bin/activate
 python main.py
 ```
 
-### Método 2: Ejecutar scripts individuales
+**Opciones del menú:**
+1. **Escanear directorios** - Solo escanea y registra archivos en BD
+2. **Subir archivos pendientes** - Solo sube lo que está marcado como pendiente
+3. **Mostrar resumen** - Estadísticas de la base de datos
+4. **Modo combinado** - Escanea y sube en un solo proceso ⭐ **RECOMENDADO**
+5. **Diagnóstico** - Verifica conectividad con Immich y prueba endpoints
+6. **Salir**
 
-1. **Escanear y poblar base de datos:**
+### Scripts Individuales
 
 ```bash
-source venv/bin/activate
+# Solo escanear
 python scan_files.py
-```
 
-2. **Subir archivos pendientes:**
-
-```bash
-source venv/bin/activate
+# Solo subir pendientes
 python upload_files.py
+
+# Escanear y subir (equivalente a opción 4)
+python sync_upload.py
 ```
 
-## Scripts
+## Estructura del Proyecto v2.0
 
-- `scan_files.py`: Escanea el directorio fuente y registra los archivos en la base de datos
-- `upload_files.py`: Sube los archivos pendientes a Immich
-- `sync_upload.py`: Escanea y sube en un solo proceso (recomendado)
-- `main.py`: Menú interactivo para gestionar todo el proceso
-- `requirements.txt`: Dependencias del proyecto
+### Scripts Principales
+- **`main.py`** - Menú interactivo con 6 opciones
+- **`scan_files.py`** - Escanea y registra archivos en BD
+- **`upload_files.py`** - Sube archivos pendientes
+- **`sync_upload.py`** - Modo combinado: escanea + sube
+
+### Módulos Core (v2.0)
+- **`config.py`** - Configuración centralizada desde .env
+- **`logger.py`** - Logging estructurado a archivo
+- **`db_manager.py`** - Gestor de BD con conexión persistente
+- **`immich_client.py`** - Cliente HTTP para API de Immich
+- **`utils.py`** - Utilidades (hash, metadata, formato)
+- **`progress.py`** - Sistema de progreso con ETA y métricas
+
+### Otros Archivos
+- **`requirements.txt`** - Dependencias Python
+- **`CLAUDE.md`** - Documentación para Claude Code
+- **`CHANGELOG.md`** - Historial de cambios v1.0 → v2.0
+- **`backup/`** - Código original v1.0
 
 ## Estructura de la base de datos
 
@@ -142,15 +163,39 @@ La tabla `media_files` contiene:
 - El sistema maneja archivos grandes mediante lectura en bloques
 - Cada subida tiene un pequeño delay para no sobrecargar el servidor
 
-## Solución de problemas
+## Configuración Avanzada (v2.0)
 
-Si experimentas problemas con la base de datos, verifica que el servicio MySQL esté corriendo:
+Variables opcionales en `.env`:
+
+```bash
+# Límites y performance
+MAX_CONSECUTIVE_ERRORS=5        # Detener tras N errores consecutivos
+UPLOAD_DELAY=0.1                # Segundos entre uploads
+HASH_CHUNK_SIZE=4096            # Bytes para cálculo de hash
+
+# Logging
+LOG_LEVEL=INFO                  # DEBUG, INFO, WARNING, ERROR
+LOG_FILE=logs/immich_uploader.log
+```
+
+## Solución de Problemas
+
+### 1. Verificar Logs
+```bash
+tail -f logs/immich_uploader.log
+```
+
+### 2. Diagnóstico de Conexión
+Usa la **Opción 5** del menú para verificar endpoints.
+
+### 3. Problema con MySQL
+Verifica que el servicio esté corriendo:
 
 ```bash
 mysql -u root -e "SHOW DATABASES;"
 ```
 
-Si el problema persiste, recrea la base de datos:
+Recrea la base de datos si es necesario:
 
 ```bash
 mysql -u root -e "DROP DATABASE IF EXISTS immich_uploader; CREATE DATABASE immich_uploader;"
@@ -175,3 +220,45 @@ CREATE TABLE IF NOT EXISTS media_files (
     UNIQUE KEY uk_filepath (filepath(768))
 );"
 ```
+
+### 4. Archivos en iCloud Drive
+⚠️ **IMPORTANTE**: Si tus archivos están en iCloud Drive con "Optimizar almacenamiento", el sistema descargará archivos bajo demanda, lo que puede ralentizar el proceso significativamente.
+
+**Soluciones:**
+- Descarga todos los archivos localmente antes de ejecutar el script
+- Usa `brctl download /ruta/a/carpeta` para forzar descarga desde iCloud
+- Considera mover archivos a almacenamiento local durante la migración
+
+### 5. Endpoint Incorrecto (404 errores)
+Si los uploads fallan con 404, tu versión de Immich usa una API diferente.
+
+**Solución:**
+1. Ejecuta **Opción 5** (Diagnóstico) del menú
+2. Identifica qué endpoint responde (ej: `/asset/upload`)
+3. El código ya está configurado para `/asset/upload` (versiones antiguas)
+
+## Changelog v2.0
+
+Ver `CHANGELOG.md` para detalles completos de cambios entre v1.0 y v2.0.
+
+**Mejoras principales:**
+- 🏗️ Arquitectura modular (6 módulos nuevos)
+- 📝 Logging a archivo con timestamps
+- 🔌 Conexión DB persistente con auto-reconexión
+- ⚡ Optimización de escaneo (107K archivos: de ~5min a ~30s)
+- 🎯 Menú de diagnóstico para troubleshooting
+- ⏱️ Timestamps en progreso y resumen detallado
+- 🛑 Manejo limpio de interrupciones (Ctrl+C)
+
+## Repositorio
+
+GitHub: `git@github.com:erwinlh/immich_uploader.git`
+
+```bash
+git clone git@github.com:erwinlh/immich_uploader.git
+cd immich_uploader
+```
+
+## Licencia
+
+Proyecto personal para migración a Immich.
